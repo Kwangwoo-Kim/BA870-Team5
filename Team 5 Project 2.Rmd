@@ -1,0 +1,132 @@
+---
+title: "Team 5 Gaming Data Notebook"
+subtitle: "![](../sandbox/png/game1.png){width=250}"
+output: html_notebook
+---
+
+```{r include=FALSE}
+# loading libraries
+library(tidyverse)
+library(ggthemes)
+library(plotly)
+library(readxl)
+games <- read_xlsx("games.xlsx") 
+
+# modifying chart size
+options(repr.plot.width=40, repr.plot.height=40)
+```
+
+
+### Gaming Data Overview and backgrond knowledge
+##### 1.Brief description and data soure
+The gaming data set has information of video games with sales greater than 100,000 copies since the year 1980 to 2016. This [gaming data set](https://www.kaggle.com/gregorut/videogamesales) is downloaded from [Kaggle.com](www.kaggle.com).
+
+Mobile, PC/Mac(computer), social/online, and console are common gaming platforms. Console here refers to computer device that outputs a video signal or visual image to display a video game that one or more people can play". Some popular consoles are PlayStation 4 Pro, Xbox One X, Nintendo Switch. Our dataset is about videogames played on console only.  
+
+##### 2.Data Cleaning 
+* We $\color{red}{\text{removed}}$ all **NULL** values, **Unknown** values, data in **2017 or later**.
+* We $\color{red}{\text{converted}}$ Year from **String** to **Date**. 
+* We $\color{red}{\text{added}}$ a new column called *Portable* based on if the gaming console is portable or not. 
+* We have `r nrow(games)` rows and `r ncol(games)` variables after cleaning the data and adding the *Portable* variable. 
+
+##### 3.Variables 
+| Variable   |      Description      |
+|----------|:-------------:|
+| Rank |  Ranking of overall sales | 
+| Name |    The games name   |   
+| Platform | Platform of the games release (i.e. PC,PS4, etc.) |    
+| Year | Year of the game's release |
+| Genre | Genre - Genre of the game |
+| Publisher |Publisher of the game |
+|NA_Sales|Sales in North America (in millions) | 
+| EU_Sales| Sales in Europe (in millions) |
+|JP_Sales |Sales in Japan (in millions) |
+| Other_Sales|Sales in the rest of the world (in millions) |
+|Global_Sales|Total worldwide sales |
+| Portable | If the gaming console is portable (1=yes,0=no) |
+
+##### 4.Glimpse of Data 
+###### a.
+```{r}
+knitr::opts_chunk$set(
+  echo = FALSE
+)
+games$Portable <- factor(games$Portable)
+str(games)
+```
+
+###### b.
+`r length(unique(games$Platform))` unique platforms: 
+`r unique(games$Platform) `
+
+```{r eval=FALSE, include=FALSE}
+unique(games$Platform)
+```
+
+###### c.
+`r length(unique(games$Genre))` unique genres: 
+`r unique(games$Genre) `
+
+###### d. 
+```{r include=FALSE}
+top_ten <- function(x) {
+  df_temp <- count(x, Publisher, sort = TRUE)
+  return(df_temp$Publisher[1:10])
+}
+```
+```{r eval=FALSE, include=FALSE}
+top_ten(games)
+```
+
+`r length(unique(games$Publisher))` unique publishers  
+Top 10 Publishers based on frequency: `r top_ten(games)`
+
+
+### Problem Set
+##### 1. What publishers, platforms, and games generated the highest revenue?
+###### a. Highest revenue generating publishers
+```{r}
+top10 <- subset(games, Publisher %in% c("Nintendo",""))
+View(top10)
+
+
+```
+###### b. Highest revenue generating platforms
+```{r}
+p1 <- ggplot(games, aes(x=Platform, y=GLobal_Sales)) + 
+  stat_summary(fun.y=sum, geom="bar",position=position_dodge(1),width=0.8,show.legend = F,,col="white",fill="black")+coord_flip()+theme_economist()
+ggplotly(p1)
+```
+###### c.Highest revenue generating games 
+```{r}
+
+
+
+
+```
+
+
+
+##### 2. Are there any overarching trends over the past ~30 years?
+
+##### 3. What platforms, publishers, and genres seem to be popular at certain periods of time from 1980-2016 ?
+```{r}
+library(plotly)
+ani <- ggplot(games, aes(Year, GLobal_Sales)) +
+    geom_point(aes(frame = Year))
+
+ani <- ggplotly(ani)
+```
+
+
+
+
+
+
+
+
+##### 4. Highest revenue generating platforms and genres over the past ~30 years for particular regions?
+
+
+### Appendix 
+
