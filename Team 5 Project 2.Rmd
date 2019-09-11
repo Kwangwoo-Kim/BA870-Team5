@@ -1,6 +1,6 @@
 ---
 title: "Team 5 Gaming Data Notebook"
-subtitle: "![](../sandbox/png/game1.png){width=250}"
+## subtitle: "![](../sandbox/png/game1.png){width=250}"
 output: html_notebook
 ---
 
@@ -10,7 +10,7 @@ library(tidyverse)
 library(ggthemes)
 library(plotly)
 library(readxl)
-games <- read_xlsx("games.xlsx") 
+games <- read_csv("games.csv") 
 
 # modifying chart size
 options(repr.plot.width=40, repr.plot.height=40)
@@ -27,6 +27,29 @@ Mobile, PC/Mac(computer), social/online, and console are common gaming platforms
 * We $\color{red}{\text{removed}}$ all **NULL** values, **Unknown** values, data in **2017 or later**.
 * We $\color{red}{\text{converted}}$ Year from **String** to **Date**. 
 * We $\color{red}{\text{added}}$ a new column called *Portable* based on if the gaming console is portable or not. 
+```{r}
+options(stringsAsFactors = FALSE)
+protable <- function(df) {
+ len <- length(df$Platform)
+ new_vec <- vector(mode = "numeric", length = len)
+ protvec <- c("DS", "GB", "3DS", "GBA")
+ for (i in 1:len)  {
+   if (df$Platform[i] %in% protvec) {
+     new_vec[i] <- 1
+   } else {
+     new_vec[i] <- 0
+   }
+ }
+ return(new_vec)
+}
+
+```
+
+```{r}
+games$Protable <- protable(games)
+```
+
+
 * We have `r nrow(games)` rows and `r ncol(games)` variables after cleaning the data and adding the *Portable* variable. 
 
 ##### 3.Variables 
@@ -51,8 +74,7 @@ Mobile, PC/Mac(computer), social/online, and console are common gaming platforms
 knitr::opts_chunk$set(
   echo = FALSE
 )
-games$Portable <- factor(games$Portable)
-str(games)
+head(games)
 ```
 
 ###### b.
@@ -68,14 +90,11 @@ unique(games$Platform)
 `r unique(games$Genre) `
 
 ###### d. 
-```{r include=FALSE}
+```{r echo=TRUE}
 top_ten <- function(x) {
   df_temp <- count(x, Publisher, sort = TRUE)
   return(df_temp$Publisher[1:10])
 }
-```
-```{r eval=FALSE, include=FALSE}
-top_ten(games)
 ```
 
 `r length(unique(games$Publisher))` unique publishers  
@@ -92,10 +111,7 @@ View(top10)
 
 ```
 ###### b. Highest revenue generating platforms
-```{r}
-p1 <- ggplot(games, aes(x=Platform, y=GLobal_Sales)) + 
-  stat_summary(fun.y=sum, geom="bar",position=position_dodge(1),width=0.8,show.legend = F,,col="white",fill="black")+coord_flip()+theme_economist()
-ggplotly(p1)
+
 ```
 ###### c.Highest revenue generating games 
 ```{r}
