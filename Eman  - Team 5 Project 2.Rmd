@@ -1,0 +1,300 @@
+---
+title: "Team 5 Gaming Data Notebook"
+## subtitle: "![](../sandbox/png/game1.png){width=250}"
+output: html_notebook
+---
+
+```{r include=FALSE}
+# loading libraries
+library(tidyverse)
+library(ggthemes)
+library(plotly)
+library(readxl)
+games <- read_csv("games.csv") 
+
+# modifying chart size
+options(repr.plot.width=40, repr.plot.height=40)
+```
+
+
+### Gaming Data Overview and backgrond knowledge
+##### 1.Brief description and data soure
+The gaming data set has information of video games with sales greater than 100,000 copies since the year 1980 to 2016. This [gaming data set](https://www.kaggle.com/gregorut/videogamesales) is downloaded from [Kaggle.com](www.kaggle.com).
+
+Mobile, PC/Mac(computer), social/online, and console are common gaming platforms. Console here refers to computer device that outputs a video signal or visual image to display a video game that one or more people can play". Some popular consoles are PlayStation 4 Pro, Xbox One X, Nintendo Switch. Our dataset is about videogames played on console only.  
+
+---
+##### 2.Data Cleaning 
+* We $\color{red}{\text{removed}}$ all **NULL** values, **Unknown** values, data in **2017 or later**.
+* We $\color{red}{\text{converted}}$ Year from **String** to **Date**. 
+* We $\color{red}{\text{added}}$ a new column called *Portable* based on if the gaming console is portable or not. 
+```{r}
+options(stringsAsFactors = FALSE)
+protable <- function(df) {
+ len <- length(df$Platform)
+ new_vec <- vector(mode = "numeric", length = len)
+ protvec <- c("DS", "GB", "3DS", "GBA")
+ for (i in 1:len)  {
+   if (df$Platform[i] %in% protvec) {
+     new_vec[i] <- 1
+   } else {
+     new_vec[i] <- 0
+   }
+ }
+ return(new_vec)
+}
+
+```
+
+```{r}
+games$Protable <- protable(games)
+```
+
+
+* We have `r nrow(games)` rows and `r ncol(games)` variables after cleaning the data and adding the *Portable* variable. 
+
+##### 3.Variables 
+| Variable   |      Description      |
+|----------|:-------------:|
+| Rank |  Ranking of overall sales | 
+| Name |    The games name   |   
+| Platform | Platform of the games release (i.e. PC,PS4, etc.) |    
+| Year | Year of the game's release |
+| Genre | Genre - Genre of the game |
+| Publisher |Publisher of the game |
+|NA_Sales|Sales in North America (in millions) | 
+| EU_Sales| Sales in Europe (in millions) |
+|JP_Sales |Sales in Japan (in millions) |
+| Other_Sales|Sales in the rest of the world (in millions) |
+|Global_Sales|Total worldwide sales |
+| Portable | If the gaming console is portable (1=yes,0=no) |
+
+##### 4.Glimpse of Data 
+###### a.
+```{r}
+knitr::opts_chunk$set(
+  echo = FALSE
+)
+head(games)
+```
+
+###### b.
+`r length(unique(games$Platform))` unique platforms: 
+`r unique(games$Platform) `
+
+```{r eval=FALSE, include=FALSE}
+unique(games$Platform)
+```
+
+###### c.
+`r length(unique(games$Genre))` unique genres: 
+`r unique(games$Genre) `
+
+###### d. 
+```{r echo=TRUE}
+top_ten <- function(x) {
+  df_temp <- count(x, Publisher, sort = TRUE)
+  return(df_temp$Publisher[1:10])
+}
+```
+
+`r length(unique(games$Publisher))` unique publishers  
+Top 10 Publishers based on frequency: `r top_ten(games)`
+
+
+### Problem Set
+##### 1. What publishers, platforms, and games generated the highest revenue?
+###### a. Highest revenue generating publishers
+###### b. Highest revenue generating platforms
+###### c.Highest revenue generating games 
+
+
+---
+
+##### 2. Are there any overarching trends over the past ~30 years?
+###### a.Does the genre influence the choice of platform? 
+```{r}
+library(ggalluvial)
+library(dplyr)
+library(forcats)
+
+
+games1 <- games %>% select(Genre, Platform) %>% group_by(Genre, Platform, add=T) %>% mutate(number=n()) %>%  distinct(Genre, Platform, .keep_all = T) 
+
+reorder 
+  
+
+games1 
+
+ggplot(games1,
+       aes(axis1 = Genre,
+           axis2 = factor(Platform),
+           fill = number)) +
+  geom_alluvium()+
+  geom_stratum() +
+  geom_text(stat = "stratum", label.strata = TRUE) +
+  scale_x_discrete(limits = c("Genre", "Platform"))
+```
+
+
+###### b.What are the top 5 video game's genres?
+
+```{r}
+mycolors <- c("#771C19", "#AA3929", "#8E9CA3", "#556670", "#000000", "#E25033", "#F27314", "#F8A31B", "#E2C59F", "#B6C5CC")
+
+top_five <- function(x) {
+  my_fct <- (x)
+  my_df <- as.data.frame(fct_count(my_fct, sort = TRUE))
+  return(my_df[1:5,])
+}
+
+top_genres <- top_five (games$Genre)
+prop <- prop.table(top_genres$n)
+top_five_genres <- cbind(top_genres, prop)
+
+ggplot(top_five_genres, aes(x = f, y = prop, label = round(prop,2))) +
+  geom_bar(width = 1, stat = "identity", color = "white", fill = c("#771C19", "#AA3929", "#8E9CA3", "#556670", "#F27314") ) +
+  coord_polar()+
+  geom_text(col = "black")+
+  theme_minimal()+
+  labs(title = "Top 5 Genres", fill = "Genre", y = element_blank(), x = element_blank())
+```
+
+###### c.What is the most used platform by video games?
+
+```{r}
+my_top_ten <- function(x) {
+  my_fct <- (x)
+  my_df <- as.data.frame(fct_count(my_fct, sort = TRUE))
+  return(my_df[1:10,])
+}
+(top_ten_platforms <- my_top_ten(games$Platform))
+
+ggplot(top_ten_platforms, aes(x = rev(reorder(f, -n)), y = n))+
+  geom_col(col = "white", fill = "#771C19") +
+  labs(title = "Top 10 Platforms by Number of Releases", x = "Platform", y = "Platform Count")+
+  coord_flip()
+
+```
+
+**summary:** Once a platform clicks in the market, it goes on to rule for few years. Playstation platform is the most famous in the market for nearly 20 years.
+
+```{r}
+
+top_platforms <- games %>%
+             group_by(Year, Platform) %>%
+             summarize(Revenue = sum(GLobal_Sales)) %>%
+             arrange(desc(Revenue)) %>%
+             top_n(1)
+             
+datatable(top_platforms)
+
+
+ggplot(top_platforms, aes(Year, Revenue, fill = Platform)) + 
+  geom_bar(stat = "identity") +
+  mytheme_1() +
+  ggtitle("Top Platform by Revenue each year") +
+  theme(legend.position = "top") + 
+  scale_fill_manual(values = mycolors)
+
+```
+
+* This is amazing, there is some real trend in the favorite platforms.
+* Once a platform clicks in the market, it goes on to rule for few years.
+* Playstation platform is the most famous in the market for nearly 20 years.
+
+###### d.When did the number of publishers in the gaming industry reach its peak? 
+**Summary:** * There is huge spike in the number of releases after 2000 and it peaked during 2008 and 2009. It has started declining last few years. This surprising when demand is more options should have been more. Depending on the platform, video games can be subcategorized into computer games and console games. In recent years however, the emergence of social networks, smartphones and tablets introduced new categories such as mobile and social games. One explanation could be that in those few years before 2016 mobile games have been overtaking PC and console games.
+
+```{r}
+library(dplyr)
+ggplot(games)+
+  geom_histogram(aes(x=Year,y=..density..), col = "white", fill = "#771C19")+
+  geom_density(aes(x=Year,y=..density..))
+
+
+```
+```{r}
+games2 <- games %>% 
+  group_by(Year) %>% 
+  summarise(Total = n())
+
+ggplot(games2)+
+  geom_line(aes(x = Year, y = Total)) +
+  expand_limits(x=c(1980, 2016)) +
+  labs( y = "Number of Games", title = "Number of publihsers and total global sales since 1980-2016")+
+  theme_minimal()
+```
+
+
+###### e. Are there any trends concerning how much each region accounts of the global sales?
+**summary:** China is seeing exceptional growth. 58 percent of total gaming growth in the worldwide market in 2016 will came from the Asia-Pacific region.
+
+```{r}
+library(magrittr)
+library(purrr)
+library(DT)
+(df_trial <- data_frame(sort(games$Year), NA_Sales = games$NA_Sales, games$EU_Sales,
+                       games$JP_Sales, games$Other_Sales, games$GLobal_Sales))
+
+games3 <- games %>% 
+  select(Year, NA_Sales, EU_Sales, JP_Sales, Other_Sales,GLobal_Sales) %>%  
+  group_by(Year) %>% 
+  summarise(NA_sales_prop = sum(NA_Sales)/sum(GLobal_Sales), 
+            EU_sales_prop = sum(EU_Sales)/sum(GLobal_Sales), 
+            JP_sales_prop = sum(JP_Sales)/sum(GLobal_Sales),
+            Other_sales_prop = sum(Other_Sales)/sum(GLobal_Sales),
+            Global_sales_prop = sum(GLobal_Sales)/sum(GLobal_Sales))
+games3
+#games1 <- games %>% 
+#  select(Year, NA_Sales, EU_Sales, JP_Sales, Other_Sales,GLobal_Sales) %>%  
+#  group_by(Year) %>% 
+#  summarise(round(NA_sales_prop = sum(NA_Sales)/sum(GLobal_Sales), 5),
+#            round(EU_sales_prop = sum(EU_Sales)/sum(GLobal_Sales),  5),
+#            round(JP_sales_prop = sum(JP_Sales)/sum(GLobal_Sales), 5),
+#            round(Other_sales_prop = sum(Other_Sales)/sum(GLobal_Sales),5),
+#            Global_sales_prop = sum(GLobal_Sales)/sum(GLobal_Sales))
+
+
+```
+
+
+
+
+```{r}
+mycolors <- c("#771C19", "#AA3929", "#8E9CA3", "#556670", "#000000", "#E25033", "#F27314", "#F8A31B", "#E2C59F", "#B6C5CC")
+
+ggplot(games3)+
+  geom_line(aes(x=Year,y = NA_sales_prop ), color = "#771C19")+
+  geom_line(aes(x=Year,y = EU_sales_prop ), color = "#B6C5CC")+
+  geom_line(aes(x=Year,y = JP_sales_prop ), color = "#E25033")+
+  geom_line(aes(x=Year,y = Other_sales_prop), color = "#E2C59F")+
+  geom_line(aes(x=Year,y = Global_sales_prop))+
+  labs(title = "Sales per region from 1980-2016", y = "Percentage of global sales")
+  theme_light()
+```
+```{r}
+ggplot(games, aes(x = games$Platform, y = games$GLoal_Sales))+
+  geom_bar()+
+  facet_wrap(~games$Genre)
+```
+
+##### 3. What platforms, publishers, and genres seem to be popular at certain periods of time from 1980-2016 ?
+
+##### 4. Highest revenue generating platforms and genres over the past ~30 years for particular regions?
+
+### Appendix 
+
+## Key Take aways from the Analysis:
+
+* Over the last few years there is decrease in the games which have crossed 100K copies sales.
+* In fact last 5-6 years has seen decrease in the revenue.
+* Nintendo is the top most publisher by revenue.
+* Action is the top most genre by revenue.
+* Action is ruling the market from 2001
+* Play Station is the most popular platform
+* EA is the top most publisher by number of releases.
+* Platform Genre generated most revenue per release.
+* Wii Sports is the top most game by revenue.
+* North America and Europe contribute 75% of the market share by revenue.
+
