@@ -1,0 +1,444 @@
+---
+title: "Team 5 Gaming Data Notebook"
+subtitle: "![](game2.png){width=250}"
+output: html_notebook
+---
+
+```{r include=FALSE}
+# loading libraries
+library(DT)
+library(RColorBrewer)
+library(tidyverse)
+library(ggthemes)
+library(plotly)
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(DT)
+library(tidyr)
+library(wesanderson)
+games <- read_csv("games.csv") 
+
+# modifying chart size
+options(repr.plot.width=250, repr.plot.height=100)
+```
+
+
+### Gaming Data Overview and backgrond knowledge
+##### 1.Brief description and data soure
+The gaming data set has information of video games with sales greater than 100,000 copies since the year 1980 to 2016. This [gaming data set](https://www.kaggle.com/gregorut/videogamesales) is downloaded from [Kaggle.com](www.kaggle.com).
+
+Mobile, PC/Mac(computer), social/online, and console are common gaming platforms. Console here refers to computer device that outputs a video signal or visual image to display a video game that one or more people can play". Some popular consoles are PlayStation 4 Pro, Xbox One X, Nintendo Switch. Our dataset is about videogames played on console only.  
+
+##### 2.Data Cleaning 
+* We $\color{red}{\text{removed}}$ all **NULL** values, **Unknown** values, and data in **2017 or later**.
+* We $\color{red}{\text{converted}}$ Year from **String** to **Date**. 
+* We $\color{red}{\text{added}}$ a new column called *Portable* based on if the gaming console is portable or not. 
+```{r}
+options(stringsAsFactors = FALSE)
+Portable <- function(df) {
+ len <- length(df$Platform)
+ new_vec <- vector(mode = "numeric", length = len)
+ protvec <- c("DS", "GB", "3DS", "GBA")
+ for (i in 1:len)  {
+   if (df$Platform[i] %in% protvec) {
+     new_vec[i] <- 1
+   } else {
+     new_vec[i] <- 0
+   }
+ }
+ return(new_vec)
+}
+
+```
+
+```{r}
+games$Portable <- Portable(games)
+```
+
+* We have `r nrow(games)` rows and `r ncol(games)` variables after cleaning the data and adding the *Portable* variable. 
+
+##### 3.Variables 
+| Variable   |      Description      |
+|----------|:-------------:|
+| Rank |  Ranking of overall sales | 
+| Name |    The games name   |   
+| Platform | Platform of the games release (i.e. PC,PS4, etc.) |    
+| Year | Year of the game's release |
+| Genre | Genre - Genre of the game |
+| Publisher |Publisher of the game |
+|NA_Sales|Sales in North America (in millions) | 
+| EU_Sales| Sales in Europe (in millions) |
+|JP_Sales |Sales in Japan (in millions) |
+| Other_Sales|Sales in the rest of the world (in millions) |
+|Global_Sales|Total worldwide sales |
+| Portable | If the gaming console is portable (1=yes,0=no) |
+
+##### 4.Glimpse of Data 
+###### a.
+```{r}
+knitr::opts_chunk$set(
+  echo = FALSE
+)
+str(games,give.attr=F)
+```
+
+###### b.
+`r length(unique(games$Platform))` unique platforms: 
+`r unique(games$Platform) `
+
+```{r eval=FALSE, include=FALSE}
+unique(games$Platform)
+```
+
+###### c.
+`r length(unique(games$Genre))` unique genres: 
+`r unique(games$Genre) `
+
+###### d. 
+```{r include=FALSE}
+top_ten <- function(x) {
+  df_temp <- count(x, Publisher, sort = TRUE)
+  return(df_temp$Publisher[1:10])
+}
+```
+
+`r length(unique(games$Publisher))` unique publishers  
+Top 10 Publishers based on frequency: `r top_ten(games)`
+
+
+### Problem Set
+##### 1. What publishers, platforms, and games generated the highest revenue?
+###### 1.a  Highest revenue generating publishers
+```{r}
+
+top10 <- games %>%select(Publisher,GLobal_Sales)%>%group_by(Publisher)%>%summarise(GLobal_Sales=sum(GLobal_Sales))%>%arrange(desc(GLobal_Sales))%>%head(10)
+
+
+p <- ggplot(top10, aes(x=reorder(Publisher,-GLobal_Sales),y=GLobal_Sales)) +
+ stat_summary(fun.y=sum, geom="bar",position=position_dodge(1),width=0.8,show.legend = F,,col="black",fill="Orange")+
+labs(title = "Top 10 revenue generating publishers over time",caption = "Sales in Million")+
+  ylab("Global Sales")+xlab("Publisher")+
+  scale_x_discrete(labels = function(x) str_wrap(x, width =1))
+p+coord_polar()
+```
+###### 1.b  Highest revenue generating platforms
+```{r,results=FALSE}
+blues <- brewer.pal(1, "Blues")
+blue_range <- colorRampPalette(blues)
+
+plat10 <- games %>%select(Platform,GLobal_Sales)%>%group_by(Platform)%>%summarise(GLobal_Sales=sum(GLobal_Sales))%>%arrange(desc(GLobal_Sales))%>%head(10)
+
+plot <- ggplot(plat10,aes(x =rev(reorder(Platform,-GLobal_Sales)), y =GLobal_Sales,fill=as.factor(GLobal_Sales),label=round(GLobal_Sales,2))) +
+  geom_bar(stat = "identity",show.legend=FALSE)+labs(title = "Top 10 revenue generating platform over time",caption = "Sales in Million")+
+    geom_text(col="black",size=3.5)+
+    scale_fill_manual(values =blue_range(10))+
+    ylab("Global Sales")+
+    xlab("Platform")+coord_flip()+theme_fivethirtyeight()
+plot
+```
+
+
+###### 1.c  Highest revenue generating games 
+```{r}
+
+options(repr.plot.width=8, repr.plot.height=5)
+
+games %>%select(Name,GLobal_Sales)%>%group_by(Name)%>%summarise(GLobal_sales=sum(GLobal_Sales))%>%arrange(desc(GLobal_sales))%>%head(10)%>%ggplot(aes(x=Name,y=GLobal_sales,group=1))+
+  geom_line(col="green4",size=2)+geom_point(aes(col="black"),size=3,show.legend = F)+
+  labs(title="Top 10 Video games by Sales",caption="Sales in Million")+scale_x_discrete(labels = function(x) str_wrap(x, width =2)) 
+  
+
+```
+###### 1.d  Most profitable platforms for TOP 3 Publisher 
+```{r,results=FALSE}
+top_three_publisher <- subset(games,Publisher %in% c("Nintendo","Electronic Arts","Activision"))
+top_three_publisher$Portable <- factor(top_three_publisher$Portable)
+
+top_three_publisher_platform <- top_three_publisher %>%select(Publisher,Platform,Portable,GLobal_Sales)%>%group_by(Publisher,Platform,Portable)%>%summarise(GLobal_Sales=sum(GLobal_Sales))%>%arrange(desc(GLobal_Sales))
+
+top_new <- top_three_publisher_platform%>%group_by(Publisher)%>%top_n(3) 
+
+ggplot(top_new, aes(x=Platform, y=GLobal_Sales, color=Publisher,shape=Portable)) +
+    geom_point(size=3)+
+  labs(title="                  Top3 Platforms of Top3 Publisher",caption="Sales in Million") +
+  geom_segment(aes(x=Platform,xend=Platform, y=0, yend=GLobal_Sales))+
+  geom_text(aes(label=GLobal_Sales), hjust = -0.3, size = 2.6,fontface = "bold",color='black') +
+  theme( plot.title = element_text(size=17,hjust=-0.5)) +
+    facet_wrap(~ Publisher, nrow = 5, scales = 'free', strip.position = 'right')+
+  ylim(0, max(top_new$GLobal_Sales + 10))+ylab("Global Sales")+
+  coord_flip() 
+
+
+```
+
+###### 1.e A fancy way to look at data
+
+```{r,fig.width=10,fig.height=5,results=F}
+ok <- games %>% select(Year,GLobal_Sales,Genre)%>%group_by(Year,Genre)%>%
+  summarise(Total_sales=sum(GLobal_Sales)) 
+ok1 <- arrange(ok, desc(Year))
+
+plot_ly(ok1, x = ~Total_sales, y = ~Genre, z = ~Year) %>%
+  add_markers(color = ~Genre, size = 0.5)
+```
+
+
+
+
+##### 2. Are there any overarching trends over the past ~30 years?
+
+###### 2.a  What are the top 5 video game's genres?
+
+```{r}
+mycolors <- c("#771C19", "#AA3929", "#8E9CA3", "#556670", "#000000", "#E25033", "#F27314", "#F8A31B", "#E2C59F", "#B6C5CC")
+
+top_five <- function(x) {
+  my_fct <- (x)
+  my_df <- as.data.frame(fct_count(my_fct, sort = TRUE))
+  return(my_df[1:5,])
+}
+
+top_genres <- top_five (games$Genre)
+prop <- prop.table(top_genres$n)
+top_five_genres <- cbind(top_genres, prop)
+
+ggplot(top_five_genres, aes(x = f, y = prop, label = round(prop,2))) +
+  geom_bar(width = 1, stat = "identity", color = "white", fill = c("#771C19", "#AA3929", "#8E9CA3", "#556670", "#F27314") ) +
+  coord_polar()+
+  geom_text(col = "black")+
+  theme_minimal()+
+  labs(title = "Top 5 Genres", fill = "Genre", y = element_blank(), x = element_blank())
+```
+
+
+###### 2.b  What is the most used platform by video games?
+
+```{r}
+my_top_ten <- function(x) {
+  my_fct <- (x)
+  my_df <- as.data.frame(fct_count(my_fct, sort = TRUE))
+  return(my_df[1:10,])
+}
+top_ten_platforms <- my_top_ten(games$Platform)
+
+mycolors <- c("#771C19", "#AA3929", "#8E9CA3", "#556670", "#000000", "#E25033", "#F27314", "#F8A31B", "#E2C59F", "#B6C5CC")
+
+ggplot(top_ten_platforms, aes(x = rev(reorder(f, -n)), y = n,label=round(n,2)))+
+  geom_col(col = "white", fill = "#F8A31B") +
+  labs(title = "Top 10 Platforms by Number of Releases", x = "Platform", y = "Number of Games Released")+
+   geom_text(col="black",size=3.5)+
+  coord_flip()
+
+
+
+```
+
+###### 2.c What is the top platform each year? 
+
+```{r,results=FALSE}
+
+top_platforms <- games %>%
+             group_by(Year, Platform) %>%
+             summarize(Revenue = sum(GLobal_Sales)) %>%
+             arrange(desc(Revenue)) %>%
+             top_n(1)
+
+
+ggplot(top_platforms, aes(Year, Revenue, fill = Platform)) + 
+  geom_bar(stat = "identity") +
+  ggtitle("Top Platform by Revenue each year") +
+  theme(legend.position = "top") + 
+  scale_fill_manual(values = mycolors)
+
+```
+
+
+* This is amazing, there is some real trend in the favorite platforms.
+* Once a platform clicks in the market, it goes on to rule for few years.
+* Playstation platform is the most famous in the market for nearly 20 years.
+
+###### 2.d  When did the number of publishers in the gaming industry reach its peak? 
+
+```{r,fig.height=7}
+mycolors <- c("#771C19", "#AA3929", "#8E9CA3", "#556670", "#000000", "#E25033", "#F27314", "#F8A31B", "#E2C59F", "#B6C5CC")
+
+ggplot(games, aes(x=Year, fill=..count..)) +
+    geom_bar()+
+    scale_color_gradient(low="#771C19", high= "#F27314")+
+    scale_fill_gradient(low="#771C19", high= "#F27314")+
+    labs(title="Number of Games Released every Year", x= "Game", 
+         y= "Total Number of Games")+
+    geom_text(stat='count',aes(label=..count..), hjust=-0.1,color="black", size=2.5)+
+    coord_flip()
+```
+
+* There is huge spike in the number of releases after 2000 and it peaked during 2008 and 2009. It has started declining last few years. This surprising when demand is more options should have been more.
+* Depending on the platform, video games can be subcategorized into computer games and console games. In recent years however, the emergence of social networks, smartphones and tablets introduced new categories such as mobile and social games. One explanation could be that in those few years before 2016 mobile games have been overtaking PC and console games.
+
+
+
+##### 3. What platforms, publishers, and genres seem to be popular at certain periods of time from 1980-2016 ?
+
+###### 3.a 
+```{r}
+## get the number game publised each year for each year and each platform
+## and add the year bin, length: 5  exception: last year bein [2010, 2017)
+## sort the data based on the year and number of game published 
+Year_Platform <- as.data.frame(xtabs(~ Year + Platform, games))
+years <- as.numeric(as.character(Year_Platform$Year))
+YearBin <- cut(years, breaks = c(1980, 1985, 1990, 1995, 2000, 2005, 2010, 2017), include.lowest = TRUE, right = FALSE)
+Year_Platform$YearBin <- YearBin
+df2 <- Year_Platform[order(Year_Platform$Year, Year_Platform$Freq),]
+```
+
+distribution of number of games published on platform
+```{r}
+df3 <-filter(df2, Freq != 0)
+ggplot(data = df3) + 
+  stat_summary(
+    mapping = aes(x = Platform, y = Freq),
+    fun.ymin = min,
+    fun.ymax = max,
+    fun.y = median
+  ) +
+  theme(axis.text.x = element_text(angle=65, vjust=0.5))
+```
+
+###### 3.b Which platform had the most number of games published in each year 
+```{r}
+df3 <-filter(df2, Freq != 0)
+mostfreq <- function(df) {
+  miny <- min(as.numeric(as.vector(df$Year)))
+  maxy <- max(as.numeric(as.vector(df$Year)))
+  max_df <- data.frame()
+  for (i in miny:maxy) {
+    tem_df <- filter(df, Year == i)
+    get_max_df <- filter(tem_df, Freq == max(tem_df$Freq))
+    max_df <- rbind(max_df, get_max_df)
+  }
+  return(max_df)
+}
+
+```
+```{r}
+
+mostfreq(df3) %>% 
+  ggplot() +
+  geom_bar(aes(Platform, y = Freq, fill = Year), stat = "identity", position = "dodge") -> pp
+
+ggplotly(pp)
+```
+###### 3.c 
+```{r}
+ggplot(df2) +
+  geom_bar(aes(YearBin, weight = Freq, fill = Platform)) +  theme(axis.text.x = element_text(angle=65, vjust=0.5))
+
+```
+
+
+###### 3.d
+```{r}
+library(plotly)
+## install.packages("dev")
+## devtools::install_github('thomasp85/gganimate')
+```
+
+
+```{r fig.width=10,fig.height=5,results=F}
+df3 <-filter(df2, Freq != 0)
+p1 <- ggplot(df3, aes(Platform, Freq, frame = Year, size = Freq, color = Year)) +
+  geom_jitter() +
+  ylim(c(0, 400)) + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.5))
+  
+ggplotly(p1)
+
+```
+
+
+##### 4. Highest revenue generating platforms and genres over the past ~30 years for particular regions?
+###### 4.a
+```{r,results=F}
+games <- games[!(games$Year %in% c("N/A", "2017", "2020")),]
+games <- games %>% gather(Region, Revenue, 7:10) 
+games$Region <- factor(games$Region)
+
+mytheme_1 <- function() {
+  
+ return(theme(axis.text.x = element_text(angle = 90, size = 10, vjust = 0.4), plot.title = element_text(size = 15, vjust = 2),axis.title.x = element_text(size = 12, vjust = -0.35)))
+  
+}
+
+mytheme_2 <- function() {
+  
+ return(theme(axis.text.x = element_text(size = 10, vjust = 0.4), plot.title = element_text(size = 15, vjust = 2),axis.title.x = element_text(size = 12, vjust = -0.35)))
+  
+}
+
+mycolors <- c("#771C19", "#AA3929", "#8E9CA3", "#556670", "#000000", "#E25033", "#F27314", "#F8A31B", "#E2C59F", "#B6C5CC","#771C19", "#AA3929", "#8E9CA3", "#556670", "#000000", "#E25033", "#F27314", "#F8A31B", "#E2C59F", "#B6C5CC","#771C19", "#AA3929", "#8E9CA3", "#556670", "#000000", "#E25033", "#F27314", "#F8A31B", "#E2C59F", "#B6C5CC","#8E9CA3")
+
+
+top_platform_region <- games %>%
+             group_by(Region, Platform) %>%
+             summarize(Revenue = sum(Revenue)) %>%
+             arrange(desc(Revenue)) %>%
+             top_n(5)
+
+ggplot(top_platform_region, aes(Region, Revenue, fill = Platform)) + 
+  geom_bar(position = "dodge", stat = "identity")  +
+  ggtitle("Top 5 Platform by Revenue in each Region") +
+  ylab("Revenue in Millions") +
+  xlab("Region") +
+  mytheme_2() +
+  theme(legend.position = "top") + 
+  scale_fill_manual(values = mycolors)
+
+```
+
+
+###### 4.b 
+```{r,results=F}
+library(ggplot2)
+library(dplyr)
+library(DT)
+library(tidyr)
+library(wesanderson)
+top_genres_region <- games %>%
+             group_by(Region, Genre) %>%
+             summarize(Revenue = sum(Revenue)) %>%
+             arrange(desc(Revenue)) %>%
+             top_n(5)
+
+ggplot(top_genres_region, aes(Region, Revenue, fill = Genre)) + 
+  geom_bar(position = "dodge", stat = "identity")  +
+  ggtitle("Top 5 Genres by Revenue in each Region") +
+  ylab("Revenue in Millions") +
+  xlab("Region") +
+  mytheme_2() +
+  theme(legend.position = "top")
+
+```
+
+###### 4.c  
+```{r,fig.width=10,fig.height=5,results=F}
+year_genre <- games %>% 
+                group_by(Year, Genre, Region) %>% 
+                  summarise(TotalRevenue = sum(Revenue)) 
+                
+
+ggplot(year_genre, aes(Year, Genre, fill = TotalRevenue)) +
+    geom_tile(color = "white") +
+    ggtitle("Highest revenue generating platforms for particular regions") + 
+    facet_wrap(vars(Region), ncol = 4) +
+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
+  scale_color_gradient(low="pink", high= "purple")+
+    scale_fill_gradient(low="pink", high= "purple")
+```
+
+
+
+### Appendix
+
+
+
